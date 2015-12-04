@@ -95,8 +95,10 @@ void RobotInit()
 	ultraRight.SetEnabled(true);
 	//ultraLeft.SetEnabled(true);
 
-	CameraServer::GetInstance()->SetQuality(50);
-	CameraServer::GetInstance()->StartAutomaticCapture("cam2");
+
+
+	//CameraServer::GetInstance()->SetQuality(50);
+	//CameraServer::GetInstance()->StartAutomaticCapture("cam2");
 
 	lift.SetFeedbackDevice(CANTalon::QuadEncoder);
 	lift.SetSensorDirection(true);
@@ -126,8 +128,9 @@ void RobotInit()
 	//bStrafe.SetCloseLoopRampRate(300);
 	bStrafe.SetPosition(0);
 	bStrafe.SetControlMode(CANSpeedController::kPercentVbus);
-
-	SmartDashboard::PutNumber("autoValue", 1);
+	int autoPref = Preferences::GetInstance()->GetInt("autoPref", 99);
+	SmartDashboard::PutNumber("autoValue", autoPref);
+	//SmartDashboard::PutNumber("autoValue", 1);
 	SmartDashboard::PutString("autoChoose", "Yellow Tote = 1      Robot Set = 2      Center Container = 3   "
 		"   Side Container = 4      Tote + Container = 7      Tote Stack = 8      Landfill = 10");
 
@@ -144,6 +147,7 @@ void RobotInit()
 	SmartDashboard::PutNumber("Back D", 0);
 	SmartDashboard::PutNumber("Front Ramp Rate", 0);
 	SmartDashboard::PutNumber("Back Ramp Rate", 0);
+	SmartDashboard::PutBoolean("SaveValue", false);
 
 }
 void DisabledPeriodic()
@@ -152,6 +156,16 @@ void DisabledPeriodic()
 	bStrafe.SelectProfileSlot(1);
 	lift.SelectProfileSlot(1);
 	//SmartDashboard::PutNumber("Laser Range", ClawRange.GetDistance());
+
+	bool setPref = SmartDashboard::GetBoolean("SaveValue", false);
+	if (true == setPref) {
+
+		int autoValue = SmartDashboard::GetNumber("autoValue", 99);
+		Preferences::GetInstance()->PutInt("autoPref", autoValue);
+		SmartDashboard::PutBoolean("SaveValue", false);
+
+	}
+
 }
 void AutonomousInit()
 {
@@ -213,9 +227,11 @@ float getRearStrafePosition(){
 }
 void DisabledInit(){
 
+
 }
 void TeleopInit()
 {
+
 	fStrafe.SetP(4);
 	fStrafe.SetI(0.0);
 
@@ -395,6 +411,7 @@ void TeleopPeriodic()
 	//strafing
 		if ((lStick.GetRawButton(1)) || (rStick.GetRawButton(1))) {
 			fStrafe.SetControlMode(CANSpeedController::kPercentVbus);
+			bStrafe.SetControlMode(CANSpeedController::kPercentVbus);
 			bStrafe.SetControlMode(CANSpeedController::kPercentVbus);
 			frontVal = pow(leftJoyX, 2);
 			rearVal = pow(rightJoyX, 2);
