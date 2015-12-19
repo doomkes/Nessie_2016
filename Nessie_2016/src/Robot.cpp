@@ -7,7 +7,7 @@
 
 #define FRONT_STRAFE_FF (1.05) //bessie
 #define REAR_STRAFE_FF (1)  //bessie
-
+#define LIFT_SCALE_FACTOR (728.177)
 //function prototypes
 float getFrontStrafePosition(void);
 float getRearStrafePosition(void);
@@ -31,9 +31,9 @@ class Robot: public MyIterativeRobot
 	float rightJoyX = 0;
 	float rightJoyY = 0;
 	//float liftJoy = 0;
-	float pickupInch = 1;
+	float pickupInch = 0;
 	float current_position = 0;
-	float max_speed = 10;
+	float max_speed = 1;
 	float delta_time = 0;
 	float last_time = 0;
 	float turbo_mode = 0.7;
@@ -53,6 +53,7 @@ class Robot: public MyIterativeRobot
 	int stepMode = 0;
 	int switchState = 0;
 	int auto_mode_value = 0;
+	float temp_drive = 0;
 
 
 public:
@@ -101,15 +102,17 @@ void RobotInit()
 	//CameraServer::GetInstance()->StartAutomaticCapture("cam2");
 
 	lift.SetFeedbackDevice(CANTalon::QuadEncoder);
-	lift.SetSensorDirection(true);
+	lift.SetSensorDirection(false);
 	lift.SelectProfileSlot(1);
-	lift.SetPID(4, 0.01, 0);
+	//lift.SetPID(4, 0.01, 0);
+	lift.SetPID(1,.0025,0);
 	lift.SetIzone(512);
 	lift.SetCloseLoopRampRate(300);
 	lift.SetPosition(0);
 	lift.ConfigFwdLimitSwitchNormallyOpen(true);
 	lift.ConfigRevLimitSwitchNormallyOpen(false);
-	lift.SetControlMode(CANSpeedController::kPosition);
+	//lift.ConfigEncoderCodesPerRev(4096);
+	lift.SetControlMode(CANSpeedController::ControlMode::kPosition);
 
 	fStrafe.SetFeedbackDevice(CANTalon::QuadEncoder);
 	//fStrafe.SetSensorDirection(true);
@@ -152,6 +155,7 @@ void RobotInit()
 }
 void DisabledPeriodic()
 {
+	SmartDashboard::PutNumber("height", lift.GetEncPosition());
 	fStrafe.SelectProfileSlot(1);
 	bStrafe.SelectProfileSlot(1);
 	lift.SelectProfileSlot(1);
@@ -240,6 +244,7 @@ void TeleopInit()
 
 void TeleopPeriodic()
 {
+
 	SmartDashboard::PutBoolean("limit switch", clawSwitch.Get());
 	SmartDashboard::PutNumber("Front Distance", fStrafe.GetEncPosition()/magic);
 	SmartDashboard::PutNumber("Back Distance", bStrafe.GetEncPosition()/magic);
@@ -365,8 +370,13 @@ void TeleopPeriodic()
 	leftJoyY = lStick.GetY();
 	rightJoyX = rStick.GetX();
 	rightJoyY = rStick.GetY();
-	//liftJoy = liftStick.GetRawAxis(4);
 
+	//liftJoy = liftStick.GetRawAxis(4);
+	//SmartDashboard::PutNumber("left joy y", leftJoyY);
+	//temp_drive += leftJoyY*10;
+	//SmartDashboard::PutNumber("left joy y", temp_drive);
+	//lift.Set(temp_drive);
+	//leftJoyY = 0;
 
 
 
@@ -657,7 +667,8 @@ void LiftZero()
 				if (lift.IsFwdLimitSwitchClosed()) lift_zero = 3;
 				break;
 			case 3:	//stop it,zero encoder, and bring to position 1
-				lift.SetPosition(0.25 *  178); //178
+				lift.SetPosition(0.25 * LIFT_SCALE_FACTOR); //178
+
 				current_position = 0;
 				pickupInch = 7;
 				lift_zero = 1;
@@ -683,8 +694,15 @@ void encoderControl()
 			current_position = pickupInch;
 			}
 		}
-	lift.Set(-current_position * 178);
+	lift.Set(-current_position * LIFT_SCALE_FACTOR);
 	last_time = Timer::GetFPGATimestamp();
+	SmartDashboard::PutNumber("PickupInch",pickupInch);
+	SmartDashboard::PutNumber("current_position",current_position);
+	SmartDashboard::PutNumber("set",-current_position * LIFT_SCALE_FACTOR);
+	SmartDashboard::PutNumber("height", lift.GetPosition());
+
+
+	//printf(" pickupInch %f, current_position %f", pickupInch, current_position);
 	//printf("delta time %f     current position %f      pickupInch %f      encoder Value %i \n", delta_time, current_position, pickupInch, lift.GetEncPosition());
 }
 
