@@ -1,6 +1,7 @@
 #include "WPILib.h"
 #include "TrapezoidalMove.h"
 #include "MyIterativeRobot.h"
+#include "UserInterface.h"
 //#include "LaserRange.h"
 #include <math.h>
 #include <stdio.h>
@@ -17,13 +18,15 @@ class Robot: public MyIterativeRobot
 	RobotDrive tank;	//normal drive wheels tank drive
 	CANTalon lift, fStrafe, bStrafe;	//lift and 2 strafe motors
 	Servo camera;
-	Joystick lStick, rStick, liftStick;
+	//Joystick lStick, rStick, liftStick;
 	Solenoid Cylinders, claw, leftPoke, capDirection, capFlow;	// leftLight, rightLight,//solenoids that control strafing wheel height
 	Ultrasonic ultraLeft, ultraRight;
 	Encoder leftCode, rightCode;
 	DigitalInput clawSwitch;
 	TrapezoidalMoveProfile aStrafeMove, landfillMove;
 	//LaserRange ClawRange;
+	UserInterface ui;
+	struct NessieUserInput nui;
 	float frontVal = 0;
 	float rearVal = 0;
 	float leftJoyX = 0;
@@ -64,9 +67,9 @@ public:
 		fStrafe(1),
 		bStrafe(2),
 		camera(8),
-		lStick(0),
-		rStick(1),
-		liftStick(2),
+		//lStick(0),
+		//rStick(1),
+		//liftStick(2),
 		Cylinders(0),
 		claw(1),
 		leftPoke(2),
@@ -382,19 +385,19 @@ void TeleopPeriodic()
 
 	//kickout
 
-	SmartDashboard::PutNumber("pov", liftStick.GetPOV());
-	if (!rStick.GetRawButton(5)){
-		if (liftStick.GetPOV() == 0) claw.Set(true);	//manual out
-		else if (liftStick.GetPOV() == 180) claw.Set(false);	//manual in
+	if (nui.button5){
+		if (nui.manClawOut) claw.Set(true);	//manual out
+		else if (nui.manClawIn) claw.Set(false);	//manual in
 		else if (!clawSwitch.Get()) claw.Set(true);	//limit switch pressed
 		else claw.Set(false);	//not out
+
 	}
 
 
 
 	//turbo
 
-	if (lStick.GetRawButton(3)) {
+	if (nui.turboMode) {
 		if (((leftJoyY-rightJoyY) <= 0.1)&&((leftJoyY-rightJoyY) >= -0.1)){		//10% range
 			leftJoyY = (leftJoyY+rightJoyY)/2;
 			rightJoyY = (leftJoyY+rightJoyY)/2;
@@ -419,14 +422,14 @@ void TeleopPeriodic()
 	static bool auto_pressed = false;
 
 	//strafing
-		if ((lStick.GetRawButton(1)) || (rStick.GetRawButton(1))) {
+		if (nui.strafeActive) {
 			fStrafe.SetControlMode(CANSpeedController::kPercentVbus);
 			bStrafe.SetControlMode(CANSpeedController::kPercentVbus);
-			bStrafe.SetControlMode(CANSpeedController::kPercentVbus);
-			frontVal = pow(leftJoyX, 2);
-			rearVal = pow(rightJoyX, 2);
-			if (leftJoyX < 0) frontVal = -frontVal;
-			if (rightJoyX < 0) rearVal = -rearVal;
+
+			frontVal = pow(nui.frontStrafeDrive, 2);
+			rearVal = pow(nui.rearStrafeDrive, 2);
+			if (nui.frontStrafeDrive < 0) frontVal = -frontVal;
+			if (nui.rearStrafeDrive < 0) rearVal = -rearVal;
 			Cylinders.Set(true);
 			tank.TankDrive(0.0 ,0.0 ,false);
 		}
@@ -440,7 +443,7 @@ void TeleopPeriodic()
 		}
 		*/
 		//landfill sequence
-		else if (rStick.GetRawButton(5)){
+		else if (nui.doLandfill){
 			fStrafe.SetControlMode(CANSpeedController::kPosition);
 			bStrafe.SetControlMode(CANSpeedController::kPosition);
 			if (!auto_pressed) {
@@ -452,15 +455,15 @@ void TeleopPeriodic()
 			Landfill2();
 		}
 		//tote-centered strafe
-		else if (lStick.GetRawButton(2)){
+		else if (toteCentStrafe){
 			fStrafe.SetControlMode(CANSpeedController::kSpeed);
 			bStrafe.SetControlMode(CANSpeedController::kSpeed);
 			Cylinders.Set(true);
-			frontVal = (leftJoyX + rightJoyX) * 5 / 2.47 * magic;
-			rearVal = (leftJoyX + rightJoyX) * 5 * magic;
+			frontVal = (nui.frontStrafeDrive + rightJoyX) * 5 / 2.47 * magic;
+			rearVal = (nui.frontStrafeDrive + rightJoyX) * 5 * magic;
 		}
 		//tote correction mode
-		else if (rStick.GetRawButton(3)){
+		else if (nui.toteCorrMode){
 			fStrafe.SetControlMode(CANSpeedController::kSpeed);
 			bStrafe.SetControlMode(CANSpeedController::kSpeed);
 			Cylinders.Set(true);
@@ -478,7 +481,7 @@ void TeleopPeriodic()
 			}
 		}
 		//continuous tote stacking mode
-		else if (rStick.GetRawButton(2)){
+		else if (nui.toteStackMode){
 			fStrafe.SetControlMode(CANSpeedController::kPercentVbus);
 			bStrafe.SetControlMode(CANSpeedController::kPercentVbus);
 			Cylinders.Set(false);
@@ -554,14 +557,10 @@ void TeleopPeriodic()
 			rearVal = 0.0;
 		}
 
-		if (!rStick.GetRawButton(5)){
+		if (!nui.doLandfill){
 			fStrafe.Set(frontVal);
 			bStrafe.Set(-rearVal);
 		}
-
-
-
-
 
 
 	//turbo lift mode
@@ -569,13 +568,13 @@ void TeleopPeriodic()
 	static int lift_multiplier = 1;
 
 	//2X speed
-	if (liftStick.GetRawButton(7)) {
+	if (nui.liftDoubleSpeed) {
 		max_speed = 20;
 		lift_multiplier = 2;
 
 	}
 	//4X speed
-	else if (liftStick.GetRawButton(5)){
+	else if (nui.liftQuadSpeed){
 		lift_multiplier = 4;
 		max_speed = 40;
 	}
@@ -586,40 +585,29 @@ void TeleopPeriodic()
 		max_speed = 10;
 	}
 
-
-
-
-
-
 	//step mode
-
-	if (liftStick.GetRawButton(9)) stepMode = 6;
+	if (nui.liftStepMode) stepMode = 6;
 	else stepMode = 0;
 
 
-
-
-
-
-
 	if (!rStick.GetRawButton(2) && !rStick.GetRawButton(5)){
-		if (liftStick.GetRawButton(1))	//stage 1
+		if (nui.liftStage1)	//stage 1
 			{
 			pickupInch = 7 + stepMode;
 			triggeralreadyPressed = false;
 			}
-		if (liftStick.GetRawButton(2))	//stage 2
+		if (nui.liftStage2)	//stage 2
 			{
 			pickupInch = 18.53 + stepMode;
 			triggeralreadyPressed = false;
 			}
-		if (liftStick.GetRawButton(3))	//stage 3
+		if (nui.liftStage3)	//stage 3
 
 			{
 			pickupInch = 30.06 + stepMode;
 			triggeralreadyPressed = false;
 			}
-		if (liftStick.GetRawButton(4))	//stage 4
+		if (nui.liftStage4)	//stage 4
 			{
 			pickupInch = 41.59 + stepMode;
 			triggeralreadyPressed = false;
