@@ -15,8 +15,9 @@
  */
 struct NessieUserInput{
 	bool turboMode;
-	bool button5;
+	bool manClawIn;
 	bool manClawOut;
+	bool clawFreeze;
 	float frontStrafeDrive;
 	float rearStrafeDrive;
 	bool strafeActive;
@@ -25,23 +26,19 @@ struct NessieUserInput{
 	bool toteStackMode;
 	bool liftDoubleSpeed;
 	bool liftQuadSpeed;
+	bool liftFreeze;
 	bool liftStepMode;
 	bool liftStage1;
 	bool liftStage2;
 	bool liftStage3;
 	bool liftStage4;
+	bool liftStage5;
 	bool doLandfill;
-	bool manClawIn;
-	bool trussShot;
-	bool bumpShot;
-	bool customShot;
-	bool frontDrive;
-	bool revDrive;
-	float leftVal;
-	float rightVal;
-	bool turbo;
-	bool forkUp;
-	bool forkDown;	
+	bool pickupMode;
+	bool zeroLift;
+	float manLiftVal;
+	bool pokersDown;
+
 };
 
 

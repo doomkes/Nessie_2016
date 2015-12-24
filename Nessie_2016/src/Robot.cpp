@@ -2,7 +2,6 @@
 #include "TrapezoidalMove.h"
 #include "MyIterativeRobot.h"
 #include "UserInterface.h"
-//#include "LaserRange.h"
 #include <math.h>
 #include <stdio.h>
 
@@ -18,13 +17,11 @@ class Robot: public MyIterativeRobot
 	RobotDrive tank;	//normal drive wheels tank drive
 	CANTalon lift, fStrafe, bStrafe;	//lift and 2 strafe motors
 	Servo camera;
-	//Joystick lStick, rStick, liftStick;
 	Solenoid Cylinders, claw, leftPoke, capDirection, capFlow;	// leftLight, rightLight,//solenoids that control strafing wheel height
 	Ultrasonic ultraLeft, ultraRight;
 	Encoder leftCode, rightCode;
 	DigitalInput clawSwitch;
 	TrapezoidalMoveProfile aStrafeMove, landfillMove;
-	//LaserRange ClawRange;
 	UserInterface ui;
 	struct NessieUserInput nui;
 	float frontVal = 0;
@@ -33,7 +30,6 @@ class Robot: public MyIterativeRobot
 	float leftJoyY = 0;
 	float rightJoyX = 0;
 	float rightJoyY = 0;
-	//float liftJoy = 0;
 	float pickupInch = 0;
 	float current_position = 0;
 	float max_speed = 1;
@@ -58,36 +54,25 @@ class Robot: public MyIterativeRobot
 	int auto_mode_value = 0;
 	float temp_drive = 0;
 
-
 public:
-
 	Robot():
 		tank(0, 4, 2, 6),
 		lift(0),
 		fStrafe(1),
 		bStrafe(2),
 		camera(8),
-		//lStick(0),
-		//rStick(1),
-		//liftStick(2),
 		Cylinders(0),
 		claw(1),
 		leftPoke(2),
 		capDirection(3),
 		capFlow(4),
-		//leftLight(4),
-		//rightLight(5),
-		//ultraLeft(13, 12),
 		ultraLeft(7, 6),
-		//ultraRight(11, 10),
 		ultraRight(3, 2),
 		leftCode(0,1,true,CounterBase::k4X),
 		rightCode(4,5,false,CounterBase::k4X),
 		clawSwitch(9),
 		aStrafeMove(20, 50, 1000, 82.5),
 		landfillMove(20, 25, 30, 60.5)
-		//ClawRange()
-
 
 	{
 		tank.SetExpiration(0.5);
@@ -99,41 +84,34 @@ void RobotInit()
 	ultraRight.SetEnabled(true);
 	//ultraLeft.SetEnabled(true);
 
-
-
 	//CameraServer::GetInstance()->SetQuality(50);
 	//CameraServer::GetInstance()->StartAutomaticCapture("cam2");
 
 	lift.SetFeedbackDevice(CANTalon::QuadEncoder);
 	lift.SetSensorDirection(false);
 	lift.SelectProfileSlot(1);
-	//lift.SetPID(4, 0.01, 0);
 	lift.SetPID(1,.0025,0);
 	lift.SetIzone(512);
 	lift.SetCloseLoopRampRate(300);
 	lift.SetPosition(0);
 	lift.ConfigFwdLimitSwitchNormallyOpen(true);
 	lift.ConfigRevLimitSwitchNormallyOpen(false);
-	//lift.ConfigEncoderCodesPerRev(4096);
 	lift.SetControlMode(CANSpeedController::ControlMode::kPosition);
 
 	fStrafe.SetFeedbackDevice(CANTalon::QuadEncoder);
-	//fStrafe.SetSensorDirection(true);
 	fStrafe.SelectProfileSlot(1);
 	fStrafe.SetPID(4, 0.01, 0);
 	fStrafe.SetIzone(512);
-	//fStrafe.SetCloseLoopRampRate(300);
 	fStrafe.SetPosition(0);
 	fStrafe.SetControlMode(CANSpeedController::kPercentVbus);
 
 	bStrafe.SetFeedbackDevice(CANTalon::QuadEncoder);
-	//bStrafe.SetSensorDirection(true);
 	bStrafe.SelectProfileSlot(1);
 	bStrafe.SetPID(4, 0.01, 0);
 	bStrafe.SetIzone(512);
-	//bStrafe.SetCloseLoopRampRate(300);
 	bStrafe.SetPosition(0);
 	bStrafe.SetControlMode(CANSpeedController::kPercentVbus);
+
 	int autoPref = Preferences::GetInstance()->GetInt("autoPref", 99);
 	SmartDashboard::PutNumber("autoValue", autoPref);
 	//SmartDashboard::PutNumber("autoValue", 1);
@@ -170,9 +148,7 @@ void DisabledPeriodic()
 		int autoValue = SmartDashboard::GetNumber("autoValue", 99);
 		Preferences::GetInstance()->PutInt("autoPref", autoValue);
 		SmartDashboard::PutBoolean("SaveValue", false);
-
 	}
-
 }
 void AutonomousInit()
 {
@@ -192,7 +168,6 @@ void AutonomousInit()
 	rightCode.Reset();
 
 	position = 0;
-
 	switchInt = 1;
 	delta_time = 0;
 	last_time = Timer::GetFPGATimestamp();
@@ -201,9 +176,7 @@ void AutonomousInit()
 	current_position = 0;
 	pickupInch = 0;
 	autoTime = 0;
-
 	autoProgram = SmartDashboard::GetNumber("autoValue", 1.000);
-
 	toteState = 1;
 }
 
@@ -234,19 +207,17 @@ float getRearStrafePosition(){
 }
 void DisabledInit(){
 
-
 }
 void TeleopInit()
 {
-
 	fStrafe.SetP(4);
 	fStrafe.SetI(0.0);
-
 	toteState = 0;
 }
 
 void TeleopPeriodic()
 {
+	ui.GetData(&nui);
 
 	SmartDashboard::PutBoolean("limit switch", clawSwitch.Get());
 	SmartDashboard::PutNumber("Front Distance", fStrafe.GetEncPosition()/magic);
@@ -255,145 +226,31 @@ void TeleopPeriodic()
 	SmartDashboard::PutNumber("Left Distance", leftCode.GetDistance());
 	SmartDashboard::PutNumber("Right Distance", rightCode.GetDistance());
 
-
-
 	encoderControl();
 	LiftZero();
 
-
-
-
 	//pokers
-
-	if (lStick.GetRawButton(4)) leftPoke.Set(true);
+	if (nui.pokersDown) leftPoke.Set(true);
 	else leftPoke.Set(false);
 
 
-
-
-	//camera
-
-	static int cameraDown = 1;
-	static bool manualCamera = false;
-	static bool pressed = false;
-
-	if (current_position <= 8) cameraDown = -1;
-	else cameraDown = 1;
-	if (liftStick.GetRawButton(5)){
-		camera.SetAngle(50);
-	}
-	else {
-		if (liftStick.GetRawButton(11)&&!pressed){
-			if (manualCamera == true) manualCamera = false;
-			else if (manualCamera == false) manualCamera = true;
-			pressed = true;
-		}
-		if (!liftStick.GetRawButton(11)) pressed = false;
-		//printf("manual mode is %i \n",manualCamera);
-		if (manualCamera == true) camera.SetAngle(camera.GetAngle() - liftStick.GetY() * 4);
-		if (manualCamera == false) camera.SetAngle(((cos(27/(sqrt(279+((current_position - 10)*(current_position - 10)))))) * 180 / 3.14159 * cameraDown) + 68);
-		//camera.SetAngle((-liftStick.GetY() * 90) + 90);
-		//printf("fancy math = %f\n",(cos(27/(sqrt(279+((current_position - 8)*(current_position - 8)))))) * 180 / 3.14159);
-	}
-
-	//container grabber
-
-
-	static int capCount = 0;
-	capCount++;
-	if (!manualCamera){
-
-		if (liftStick.GetY() >= 0.1){
-			capDirection.Set(true);
-		}
-		else if (liftStick.GetY() <= -0.1){
-			capDirection.Set(false);
-		}
-		else {
-			capDirection.Set(false);
-			capFlow.Set(true);
-		}
-
-		float liftJoyY = liftStick.GetY();
-		liftJoyY = liftStick.GetY();
-
-		if (liftJoyY < 0) liftJoyY = -liftJoyY;
-
-		if (capCount == 1 && liftJoyY >= 0.1){
-			capFlow.Set(false);
-		}
-		if (capCount > 10 * (liftJoyY / 2 + 0.1)){
-			capFlow.Set(true);
-		}
-
-	}
-	if (capCount == 5) capCount = 0;
-
-
-
 	//ultrasonic
-
 	static float rangeLeft = 0;
 	static float rangeRight = 0;
 	ultraLeft.SetAutomaticMode(true);
 	ultraRight.SetAutomaticMode(true);
 	rangeLeft = ultraLeft.GetRangeInches();
 	rangeRight = ultraRight.GetRangeInches();
-	//printf("%f %f");
 	SmartDashboard::PutNumber("right range", rangeRight);
 	SmartDashboard::PutNumber("left range", rangeLeft);
 
-	/*if (rangeRight <= 8) rightLight.Set(true);
-	else rightLight.Set(false);
-	if (rangeLeft <= 8) leftLight.Set(true);
-	else leftLight.Set(false);
-
-	float lVal = 0;
-	float rVal = 0;
-	if (rangeRight >= 12){
-		rVal = -rightJoyY;
-	}
-	else if (rangeRight >= 8){
-		rVal = -((rangeRight - 8) / 8 * rightJoyY) + 0.3;
-	}
-	else rVal = 0;
-
-	if (rangeLeft >= 12){
-		lVal = -leftJoyY;
-	}
-	else if (rangeLeft >= 8){
-		lVal = -((rangeLeft - 8) / 8 * leftJoyY) + 0.3;
-	}
-	else rVal = 0;
-*/
-
-
-
-	leftJoyX = lStick.GetX();
-	leftJoyY = lStick.GetY();
-	rightJoyX = rStick.GetX();
-	rightJoyY = rStick.GetY();
-
-	//liftJoy = liftStick.GetRawAxis(4);
-	//SmartDashboard::PutNumber("left joy y", leftJoyY);
-	//temp_drive += leftJoyY*10;
-	//SmartDashboard::PutNumber("left joy y", temp_drive);
-	//lift.Set(temp_drive);
-	//leftJoyY = 0;
-
-
-
 	//kickout
-
-	if (nui.button5){
+	if (!nui.clawFreeze){
 		if (nui.manClawOut) claw.Set(true);	//manual out
 		else if (nui.manClawIn) claw.Set(false);	//manual in
 		else if (!clawSwitch.Get()) claw.Set(true);	//limit switch pressed
 		else claw.Set(false);	//not out
-
 	}
-
-
 
 	//turbo
 
@@ -405,17 +262,6 @@ void TeleopPeriodic()
 		turbo_mode = 1.0;
 		}
 	else turbo_mode = 0.7;
-
-
-
-
-	//"tote distance lock"
-
-	if (rStick.GetRawButton(4)) ultraLock = true;
-	else ultraLock = false;
-
-
-
 
 	//strafe/tankdrive mode
 
@@ -455,7 +301,7 @@ void TeleopPeriodic()
 			Landfill2();
 		}
 		//tote-centered strafe
-		else if (toteCentStrafe){
+		else if (nui.toteCentStrafe){
 			fStrafe.SetControlMode(CANSpeedController::kSpeed);
 			bStrafe.SetControlMode(CANSpeedController::kSpeed);
 			Cylinders.Set(true);
@@ -562,16 +408,13 @@ void TeleopPeriodic()
 			bStrafe.Set(-rearVal);
 		}
 
-
 	//turbo lift mode
-
 	static int lift_multiplier = 1;
 
 	//2X speed
 	if (nui.liftDoubleSpeed) {
 		max_speed = 20;
 		lift_multiplier = 2;
-
 	}
 	//4X speed
 	else if (nui.liftQuadSpeed){
@@ -586,11 +429,11 @@ void TeleopPeriodic()
 	}
 
 	//step mode
-	if (nui.liftStepMode) stepMode = 6;
+	if (nui.liftStepMode) stepMode = 6; // add six inches when working off the step
 	else stepMode = 0;
 
 
-	if (!rStick.GetRawButton(2) && !rStick.GetRawButton(5)){
+	if (!nui.liftFreeze && !nui.clawFreeze){
 		if (nui.liftStage1)	//stage 1
 			{
 			pickupInch = 7 + stepMode;
@@ -602,7 +445,6 @@ void TeleopPeriodic()
 			triggeralreadyPressed = false;
 			}
 		if (nui.liftStage3)	//stage 3
-
 			{
 			pickupInch = 30.06 + stepMode;
 			triggeralreadyPressed = false;
@@ -612,32 +454,31 @@ void TeleopPeriodic()
 			pickupInch = 41.59 + stepMode;
 			triggeralreadyPressed = false;
 			}
-		if (liftStick.GetRawButton(6))	//stage 5
+		if (nui.liftStage5)	//stage 5
 			{
 			pickupInch = 53.12;
 			triggeralreadyPressed = false;
 			}
-		if ((liftStick.GetRawButton(8))&&(!triggeralreadyPressed)) //pickup mode
+		if (nui.pickupMode &&(!triggeralreadyPressed)) //pickup mode
 		{
 			pickupInch = pickupInch - 7;
 			triggeralreadyPressed = true;
 			triggeralreadyUnpressed = false;
 		}
-		if ((!liftStick.GetRawButton(8))&&(!triggeralreadyUnpressed)) //stack mode
+		if (nui.pickupMode &&(!triggeralreadyUnpressed)) //stack mode
 		{
 			pickupInch = pickupInch + 7;
 			triggeralreadyPressed = false;
 			triggeralreadyUnpressed = true;
 		}
 
-		if ((lift.IsRevLimitSwitchClosed())&&(liftStick.GetRawAxis(3) < -0.1)) {	//manual up
-			 pickupInch = pickupInch - liftStick.GetRawAxis(3) * 0.2 * lift_multiplier;
+		if ((lift.IsRevLimitSwitchClosed())&&(nui.manLiftVal < -0.1)) {	//manual up
+			 pickupInch = pickupInch - nui.manLiftVal * 0.2 * lift_multiplier;
 		}
-		if ((pickupInch >= 0)&&(liftStick.GetRawAxis(3) > 0.1)) {
-				 pickupInch = pickupInch - liftStick.GetRawAxis(3) * 0.2 * lift_multiplier;	//manual down
+		if ((pickupInch >= 0)&&(nui.manLiftVal > 0.1)) {
+				 pickupInch = pickupInch - nui.manLiftVal * 0.2 * lift_multiplier;	//manual down
 		}
 	}
-
 }
 
 void TestPeriodic()
@@ -648,7 +489,7 @@ void LiftZero()
 {
 	switch (lift_zero)	{//automatic zero encoder
 			case 1:	//check for button press
-				if (liftStick.GetRawButton(10)) lift_zero = 2;
+				if (nui.zeroLift) lift_zero = 2;
 				break;
 			case 2:	//bring lift down until it hits the limit switch
 				pickupInch = -100;
@@ -656,7 +497,6 @@ void LiftZero()
 				break;
 			case 3:	//stop it,zero encoder, and bring to position 1
 				lift.SetPosition(0.25 * LIFT_SCALE_FACTOR); //178
-
 				current_position = 0;
 				pickupInch = 7;
 				lift_zero = 1;
@@ -688,7 +528,6 @@ void encoderControl()
 	SmartDashboard::PutNumber("current_position",current_position);
 	SmartDashboard::PutNumber("set",-current_position * LIFT_SCALE_FACTOR);
 	SmartDashboard::PutNumber("height", lift.GetPosition());
-
 
 	//printf(" pickupInch %f, current_position %f", pickupInch, current_position);
 	//printf("delta time %f     current position %f      pickupInch %f      encoder Value %i \n", delta_time, current_position, pickupInch, lift.GetEncPosition());
