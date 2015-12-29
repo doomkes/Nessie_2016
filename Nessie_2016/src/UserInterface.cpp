@@ -9,9 +9,9 @@
  * Default constructor
  */
 UserInterface::UserInterface():
-		lStick(1),						// as they are declared above.
-		rStick(2),
-		liftStick(3)
+		lStick(0),						// as they are declared above.
+		rStick(1),
+		liftStick(2)
 {
 }
 
@@ -42,6 +42,10 @@ void  UserInterface::GetData(NessieUserInput *nui){
 		nui->toteCentStrafe = lStick.GetRawButton(2);
 		nui->toteCorrMode = rStick.GetRawButton(3);
 		nui->toteStackMode = rStick.GetRawButton(2);
+
+		// Tank Drive Inputs
+		nui->leftDrive = lStick.GetY();
+		nui->rightDrive = rStick.GetY();
 
 		// Lift User Interface Defines
 		nui->zeroLift = liftStick.GetRawButton(10);

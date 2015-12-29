@@ -27,9 +27,9 @@ class Robot: public MyIterativeRobot
 	float frontVal = 0;
 	float rearVal = 0;
 	float leftJoyX = 0;
-	float leftJoyY = 0;
+	float leftDrive = 0;
 	float rightJoyX = 0;
-	float rightJoyY = 0;
+	float rightDrive = 0;
 	float pickupInch = 0;
 	float current_position = 0;
 	float max_speed = 1;
@@ -252,12 +252,14 @@ void TeleopPeriodic()
 		else claw.Set(false);	//not out
 	}
 
-	//turbo
+	leftDrive = nui.leftDrive;
+	rightDrive = nui.rightDrive;
 
+	//turbo
 	if (nui.turboMode) {
-		if (((leftJoyY-rightJoyY) <= 0.1)&&((leftJoyY-rightJoyY) >= -0.1)){		//10% range
-			leftJoyY = (leftJoyY+rightJoyY)/2;
-			rightJoyY = (leftJoyY+rightJoyY)/2;
+		if (((leftDrive-rightDrive) <= 0.1)&&((leftDrive-rightDrive) >= -0.1)){		//10% range
+			leftDrive = (leftDrive+rightDrive)/2;
+			rightDrive = (leftDrive+rightDrive)/2;
 		}
 		turbo_mode = 1.0;
 		}
@@ -394,11 +396,11 @@ void TeleopPeriodic()
 			fStrafe.SetControlMode(CANSpeedController::kPercentVbus);
 			bStrafe.SetControlMode(CANSpeedController::kPercentVbus);
 			Cylinders.Set(false);
-			if (!ultraLock) tank.TankDrive(-(leftJoyY* leftJoyY* leftJoyY) * turbo_mode, -(rightJoyY*rightJoyY*rightJoyY) * turbo_mode, false);
+			if (!ultraLock) tank.TankDrive(-(leftDrive* leftDrive* leftDrive) * turbo_mode, -(rightDrive*rightDrive*rightDrive) * turbo_mode, false);
 			//else tank.TankDrive(lVal, rVal);
-			//else tank.TankDrive(-leftJoyY * ((rangeLeft - 5) / 5), -rightJoyY * ((rangeRight - 5) / 5));
-			SmartDashboard::PutNumber("right constraint", rightJoyY * ((rangeRight - 5) / 5));
-			SmartDashboard::PutNumber("left constraint", leftJoyY * ((rangeLeft - 5) / 5));
+			//else tank.TankDrive(-leftDrive * ((rangeLeft - 5) / 5), -rightDrive * ((rangeRight - 5) / 5));
+			SmartDashboard::PutNumber("right constraint", rightDrive * ((rangeRight - 5) / 5));
+			SmartDashboard::PutNumber("left constraint", leftDrive * ((rangeLeft - 5) / 5));
 			frontVal = 0.0;
 			rearVal = 0.0;
 		}

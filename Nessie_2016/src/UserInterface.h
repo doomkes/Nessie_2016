@@ -20,6 +20,8 @@ struct NessieUserInput{
 	bool clawFreeze;
 	float frontStrafeDrive;
 	float rearStrafeDrive;
+	float leftDrive;
+	float rightDrive;
 	bool strafeActive;
 	bool toteCentStrafe;
 	bool toteCorrMode;
